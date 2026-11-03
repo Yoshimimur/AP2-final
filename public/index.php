@@ -7,6 +7,13 @@ require __DIR__ . '/../src/autoload.php';
 $path   = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
 $method = $_SERVER['REQUEST_METHOD'];
 
+// Solange ein vorläufiges Passwort gilt, ist nur "Passwort ändern" (und Abmelden) erreichbar
+$user = (new AuthService())->currentUser();
+if ($user !== null && $user->isFirstLogin() && !in_array($path, ['password', 'logout'], true)) {
+    header('Location: /password');
+    exit;
+}
+
 if ($path === '' || $path === 'login') {
     $controller = new AuthController();
     if ($method === 'POST') {
@@ -14,11 +21,17 @@ if ($path === '' || $path === 'login') {
     } else {
         $controller->showLogin();
     }
+} elseif ($path === 'password') {
+    $controller = new AuthController();
+    if ($method === 'POST') {
+        $controller->changePassword();
+    } else {
+        $controller->showChangePassword();
+    }
 } elseif ($path === 'logout') {
     (new AuthController())->logout();
 } elseif ($path === 'admin') {
     // Vorübergehend, nur zum Testen der Anmeldung
-    $user = (new AuthService())->currentUser();
     if ($user === null) {
         header('Location: /login');
         exit;
