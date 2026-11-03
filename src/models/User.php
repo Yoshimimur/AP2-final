@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 class User
 {
+    private const ROLES = ['system_admin', 'standard_user'];
     private int $id;
     private string $username;
     private string $passwordHash;
@@ -23,6 +24,36 @@ class User
         return $user;
     }
 
+    // Alle Benutzer, alphabetisch sortiert (für die Benutzerverwaltung)
+    public static function findAll(): array
+    {
+        $rows = Database::getConnection()
+            ->query('SELECT * FROM users ORDER BY username')
+            ->fetchAll();
+
+        return array_map(fn(array $row) => self::fromRow($row), $rows);
+    }
+
+    // Legt einen Benutzer mit vorläufigem Passwort an 
+    public static function create(string $username, string $password, string $role): User
+    {
+        if (!in_array($role, self::ROLES, true)) {
+            throw new InvalidArgumentException('Ungültige Rolle.');
+        }
+
+        $stmt = Database::getConnection()->prepare(
+            'INSERT INTO users (username, password_hash, role, first_login)
+             VALUES (:u, :h, :r, 1)'
+        );
+        $stmt->execute([
+            'u' => $username,
+            'h' => password_hash($password, PASSWORD_DEFAULT),
+            'r' => $role,
+        ]);
+
+        return self::findByUsername($username);
+    }
+
     // Sucht einen Benutzer über den Benutzernamen. Gibt null zurück, wenn es kein Benutzer gibt
     public static function findByUsername(string $username): ?User
     {
@@ -33,6 +64,43 @@ class User
         $row = $stmt->fetch();
 
         return $row ? self::fromRow($row) : null;
+    }
+
+
+        // Setzt ein neues Passwort. Danach ist es kein vorläufiges mehr (first_login = 0).
+    public function changePassword(string $password): void
+    {
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+
+        $stmt = Database::getConnection()->prepare(
+            'UPDATE users SET password_hash = :h, first_login = 0 WHERE id = :id'
+        );
+        $stmt->execute(['h' => $hash, 'id' => $this->id]);
+
+        $this->passwordHash = $hash;
+        $this->firstLogin   = false;
+    }
+
+    // Ändert die Rolle des Benutzers.
+    public function changeRole(string $role): void
+    {
+        if (!in_array($role, self::ROLES, true)) {
+            throw new InvalidArgumentException('Ungültige Rolle.');
+        }
+
+        $stmt = Database::getConnection()->prepare(
+            'UPDATE users SET role = :r WHERE id = :id'
+        );
+        $stmt->execute(['r' => $role, 'id' => $this->id]);
+
+        $this->role = $role;
+    }
+
+        // Löscht den Benutzer. Seine Protokolleinträge bleiben erhalten (ON DELETE SET NULL).
+    public function delete(): void
+    {
+        $stmt = Database::getConnection()->prepare('DELETE FROM users WHERE id = :id');
+        $stmt->execute(['id' => $this->id]);
     }
 
     // Ist der Benutzer Systemadministrator?
