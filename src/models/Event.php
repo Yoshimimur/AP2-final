@@ -66,6 +66,27 @@ class Event
         $this->name = $name;
     }
 
+    // Löscht das Event mit allen QR-Zieladressen. Deren URL's und Dokumente verschwinden automatisch mit (ON DELETE CASCADE)
+    public function delete(): void
+    {
+        $pdo = Database::getConnection();
+        $pdo->beginTransaction();
+
+        try {
+            $stmt = $pdo->prepare('DELETE FROM qr_destinations WHERE event_id = :id');
+            $stmt->execute(['id' => $this->id]);
+
+            $stmt = $pdo->prepare('DELETE FROM events WHERE id = :id');
+            $stmt->execute(['id' => $this->id]);
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    // Getter: Lesezugriff auf die privaten Werte
     public function getId(): int { return $this->id; }
     public function getName(): string { return $this->name; }
 }
