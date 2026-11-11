@@ -31,13 +31,11 @@ if ($path === '' || $path === 'login') {
 } elseif ($path === 'logout') {
     (new AuthController())->logout();
 } elseif ($path === 'admin') {
-    // Vorübergehend, nur zum Testen der Anmeldung
-    if ($user === null) {
-        header('Location: /login');
-        exit;
-    }
-    echo 'Angemeldet als ' . htmlspecialchars($user->getUsername())
-        . ' – <a href="/logout">Abmelden</a>';
+    // Startseite des Verwaltungsbereichs: die Eventübersicht
+    header('Location: /events');
+    exit;
+} elseif ($path === 'events') {
+    (new AdminController())->manageEvents();
 } elseif (preg_match('#^[a-z0-9-]+/[a-f0-9]{8}$#', $path)) {
     // Öffentliche QR-Adresse: Namensteil + zufälliger Code
     (new PublicController())->show($path);
