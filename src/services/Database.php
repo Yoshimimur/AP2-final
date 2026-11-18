@@ -9,7 +9,11 @@ class Database
     public static function getConnection(): PDO
     {
         if (self::$pdo === null) {
-            self::$pdo = new PDO('sqlite:' . __DIR__ . '/../../database/database.sqlite');
+            $path = getenv('QR_DB_PATH') ?: __DIR__ . '/../../database/database.sqlite';
+            if (!is_file($path)) {
+                throw new RuntimeException('Die Datenbank wurde noch nicht eingerichtet');
+            }
+            self::$pdo = new PDO('sqlite:' . $path);
 
             // Fehler als Ausnahme melden
             self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -19,6 +23,7 @@ class Database
 
             // Fremdschlüssel einschalten (pro Verbindung)
             self::$pdo->exec('PRAGMA foreign_keys = ON');
+            self::$pdo->exec('PRAGMA busy_timeout = 5000');
         }
 
         return self::$pdo;

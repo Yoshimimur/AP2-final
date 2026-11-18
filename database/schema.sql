@@ -1,4 +1,4 @@
--- SQLite prüft Fremdschlüssel nur, wenn das ausdrücklich eingeschaltet wird.
+-- SQLite prüft Fremdschlüssel nur, wenn das ausdrücklich eingeschaltet wird
 PRAGMA foreign_keys = ON;
 
 -- EVENTS
@@ -44,6 +44,7 @@ CREATE TABLE change_logs (
     user_id            INTEGER,
     qr_destination_id  INTEGER,
     user_shortcut      TEXT NOT NULL,
+    action             TEXT NOT NULL,
     changed_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (qr_destination_id) REFERENCES qr_destinations(id) ON DELETE SET NULL

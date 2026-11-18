@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+// Die Einrichtung darf nur im Terminal gestartet werden
+if (PHP_SAPI !== 'cli') {
+    exit('Nur im Terminal ausführen');
+}
+
 $dbFile = __DIR__ . '/database.sqlite';
 
 if (file_exists($dbFile)) {
@@ -23,12 +28,12 @@ $stmt = $pdo->prepare(
      VALUES (:u, :h, :r, 1)'
 );
 $stmt->execute([
-    'u' => 'admin',
+    'u' => 'Systemadministrator',
     'h' => password_hash($temp, PASSWORD_DEFAULT),
     'r' => 'system_admin',
 ]);
 
 echo "Datenbank angelegt.\n";
-echo "Benutzername: admin\n";
+echo "Benutzername: Systemadministrator\n";
 echo "Vorläufiges Passwort: $temp\n";
 echo "Das Passwort muss bei der ersten Anmeldung geändert werden.\n";
