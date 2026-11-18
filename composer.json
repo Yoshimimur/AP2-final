@@ -1,0 +1,19 @@
+{
+    "name": "qr-docmanager/application",
+    "description": "QR-DocManager mit Slim-Routing",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.5.12",
+        "ext-pdo_sqlite": "*",
+        "slim/slim": "^4.15.3",
+        "slim/psr7": "^1.8"
+    },
+    "autoload": {
+        "classmap": [
+            "src/controllers/",
+            "src/models/",
+            "src/services/"
+        ]
+    }
+}
