@@ -3,58 +3,60 @@ declare(strict_types=1);
 
 class AuthService
 {
-    // Prüft Benutzername und Passwort (bei Erfolg wird der Benutzer in der Session gemerkt)
     public function login(string $username, string $password): bool
     {
         $user = User::findByUsername($username);
-
         if ($user === null || !password_verify($password, $user->getPasswordHash())) {
             return false;
         }
 
-        // Neue Session-ID vergeben
         session_regenerate_id(true);
+        $_SESSION = [];
         $_SESSION['username'] = $user->getUsername();
-
         return true;
     }
 
-        // Meldet den Benutzer ab und beendet die Session
     public function logout(): void
     {
         $_SESSION = [];
-
         if (session_status() === PHP_SESSION_ACTIVE) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', [
+                'expires' => time() - 3600, 'path' => $params['path'],
+                'secure' => $params['secure'], 'httponly' => true, 'samesite' => 'Lax',
+            ]);
             session_destroy();
         }
     }
 
-    // Liefert den angemeldeten Benutzer (oder null, wenn niemand angemeldet ist)
     public function currentUser(): ?User
     {
         $username = $_SESSION['username'] ?? null;
-
-        if ($username === null) {
-            return null;
-        }
-
-        return User::findByUsername($username);
+        return is_string($username) ? User::findByUsername($username) : null;
     }
 
-        // Lässt nur Systemadministratoren durch
-    public function requireAdmin(): void
+    // Erstellt einen geheimen Prüfwert für Formulare dieser Sitzung
+    public static function token(): string
     {
-        $user = $this->currentUser();
-
-        if ($user === null) {
-            header('Location: /login');
-            exit;
+        if (!isset($_SESSION['csrf'])) {
+            $_SESSION['csrf'] = bin2hex(random_bytes(32));
         }
+        return $_SESSION['csrf'];
+    }
 
-        if (!$user->isAdmin()) {
-            http_response_code(403);
-            echo 'Zugriff verweigert.';
-            exit;
+    // Vergleicht den Formularwert mit dem Wert der Sitzung
+    public static function validToken(mixed $token): bool
+    {
+        return is_string($token) && isset($_SESSION['csrf']) && hash_equals($_SESSION['csrf'], $token);
+    }
+
+    // Nimmt nur einzelne Texte an und weist manipulierte Formularfelder zurück
+    public static function text(array $data, string $key): string
+    {
+        $value = $data[$key] ?? '';
+        if (!is_string($value)) {
+            throw new InvalidArgumentException('Bitte gültige Formulardaten eingeben.');
         }
+        return $value;
     }
 }

@@ -31,12 +31,25 @@ class User
             ->query('SELECT * FROM users ORDER BY username')
             ->fetchAll();
 
-        return array_map(fn(array $row) => self::fromRow($row), $rows);
+        $users = [];
+        foreach ($rows as $row) {
+            $users[] = self::fromRow($row);
+        }
+        return $users;
     }
 
     // Legt einen Benutzer mit vorläufigem Passwort an 
     public static function create(string $username, string $password, string $role): User
     {
+        if (preg_match('/^[a-zA-Z0-9._-]{1,50}$/D', $username) !== 1) {
+            throw new InvalidArgumentException('Das Kürzel darf 1 bis 50 Buchstaben, Ziffern, Punkte, Bindestriche oder Unterstriche enthalten.');
+        }
+        if (self::findByUsername($username) !== null) {
+            throw new InvalidArgumentException('Dieses Benutzerkürzel ist bereits vergeben.');
+        }
+        if ($password === '' || strlen($password) > 72) {
+            throw new InvalidArgumentException('Bitte ein vorläufiges Passwort mit höchstens 72 Bytes eingeben.');
+        }
         if (!in_array($role, self::ROLES, true)) {
             throw new InvalidArgumentException('Ungültige Rolle.');
         }
@@ -54,7 +67,16 @@ class User
         return self::findByUsername($username);
     }
 
-    // Sucht einen Benutzer über den Benutzernamen. Gibt null zurück, wenn es kein Benutzer gibt
+    // Sucht einen Benutzer für die Benutzerverwaltung
+    public static function findById(int $id): ?User
+    {
+        $stmt = Database::getConnection()->prepare('SELECT * FROM users WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+        return $row ? self::fromRow($row) : null;
+    }
+
+    // Sucht einen Benutzer über den Benutzernamen; gibt null zurück, wenn es kein Benutzer gibt
     public static function findByUsername(string $username): ?User
     {
         $stmt = Database::getConnection()->prepare(
@@ -67,7 +89,7 @@ class User
     }
 
 
-        // Setzt ein neues Passwort. Danach ist es kein vorläufiges mehr (first_login = 0).
+        // Setzt ein neues Passwort; danach ist es kein vorläufiges mehr (first_login = 0)
     public function changePassword(string $password): void
     {
         $hash = password_hash($password, PASSWORD_DEFAULT);
@@ -81,9 +103,12 @@ class User
         $this->firstLogin   = false;
     }
 
-    // Ändert die Rolle des Benutzers.
+    // Ändert die Rolle des Benutzers
     public function changeRole(string $role): void
     {
+        if ($this->isProtected()) {
+            throw new InvalidArgumentException('Die Rolle des festen Systemadministrators kann nicht geändert werden.');
+        }
         if (!in_array($role, self::ROLES, true)) {
             throw new InvalidArgumentException('Ungültige Rolle.');
         }
@@ -96,9 +121,12 @@ class User
         $this->role = $role;
     }
 
-        // Löscht den Benutzer. Seine Protokolleinträge bleiben erhalten (ON DELETE SET NULL).
+        // Löscht den Benutzer; seine Protokolleinträge bleiben erhalten
     public function delete(): void
     {
+        if ($this->isProtected()) {
+            throw new InvalidArgumentException('Der feste Systemadministrator kann nicht gelöscht werden.');
+        }
         $stmt = Database::getConnection()->prepare('DELETE FROM users WHERE id = :id');
         $stmt->execute(['id' => $this->id]);
     }
@@ -107,6 +135,12 @@ class User
     public function isAdmin(): bool
     {
         return $this->role === 'system_admin';
+    }
+
+    // Das erste Einrichtungskonto bleibt als Administrator erhalten
+    public function isProtected(): bool
+    {
+        return $this->username === 'Systemadministrator';
     }
 
     // Lesezugriff auf die Eigenschaften (private)
