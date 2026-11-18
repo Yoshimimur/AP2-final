@@ -1,0 +1,12 @@
+{
+  "name": "qr-docmanager-assets",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/styles.css -o ./public/assets/app.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.5",
+    "lucide-static": "1.73.0",
+    "tailwindcss": "4.3.5"
+  }
+}

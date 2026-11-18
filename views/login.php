@@ -1,29 +1,12 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Anmelden | QR-DocManager</title>
-</head>
-<body>
-    <h1>Anmelden</h1>
-
-    <?php if (!empty($error)): ?>
-        <p><?= htmlspecialchars($error) ?></p>
-    <?php endif; ?>
-
+<?php require __DIR__ . '/header.php'; ?>
+<section class="panel">
+    <h2 class="mb-6 text-lg font-semibold">Anmelden</h2>
+    <?php if ($error): ?><p class="alert error" role="alert"><?= $e($error) ?></p><?php endif; ?>
     <form method="post" action="/login">
-        <p>
-            <label>Benutzername<br>
-                <input type="text" name="username" required autofocus>
-            </label>
-        </p>
-        <p>
-            <label>Passwort<br>
-                <input type="password" name="password" required>
-            </label>
-        </p>
-        <button type="submit">Anmelden</button>
+        <input type="hidden" name="csrf" value="<?= $e(AuthService::token()) ?>">
+        <label>Benutzername<input name="username" maxlength="50" autocomplete="username" required autofocus></label>
+        <label>Passwort<input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="btn w-full mt-6" type="submit">Anmelden</button>
     </form>
-</body>
-</html>
+</section>
+<?php require __DIR__ . '/footer.php'; ?>
