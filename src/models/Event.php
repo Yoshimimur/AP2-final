@@ -22,10 +22,14 @@ class Event
             ->query('SELECT * FROM events ORDER BY name')
             ->fetchAll();
 
-        return array_map(fn(array $row) => self::fromRow($row), $rows);
+        $events = [];
+        foreach ($rows as $row) {
+            $events[] = self::fromRow($row);
+        }
+        return $events;
     }
 
-    // Sucht ein Event über seine ID - Gibt null zurück, wenn es keins gibt
+    // Sucht ein Event über seine ID;  Gibt null zurück, wenn es keins gibt
     public static function findById(int $id): ?Event
     {
         $stmt = Database::getConnection()->prepare('SELECT * FROM events WHERE id = :id');
@@ -40,8 +44,8 @@ class Event
     {
         $name = trim($name);
 
-        if ($name === '') {
-            throw new InvalidArgumentException('Der Name darf nicht leer sein.');
+        if ($name === '' || preg_match('/^.{1,100}$/us', $name) !== 1) {
+            throw new InvalidArgumentException('Bitte einen Namen mit 1 bis 100 Zeichen eingeben.');
         }
 
         $pdo  = Database::getConnection();
@@ -56,8 +60,8 @@ class Event
     {
         $name = trim($name);
 
-        if ($name === '') {
-            throw new InvalidArgumentException('Der Name darf nicht leer sein.');
+        if ($name === '' || preg_match('/^.{1,100}$/us', $name) !== 1) {
+            throw new InvalidArgumentException('Bitte einen Namen mit 1 bis 100 Zeichen eingeben.');
         }
 
         $stmt = Database::getConnection()->prepare('UPDATE events SET name = :n WHERE id = :id');
@@ -65,25 +69,14 @@ class Event
 
         $this->name = $name;
     }
-
-    // Löscht das Event mit allen QR-Zieladressen. Deren URL's und Dokumente verschwinden automatisch mit (ON DELETE CASCADE)
+    // Der Controller speichert die gesamte Löschung gemeinsam
     public function delete(): void
     {
         $pdo = Database::getConnection();
-        $pdo->beginTransaction();
-
-        try {
-            $stmt = $pdo->prepare('DELETE FROM qr_destinations WHERE event_id = :id');
-            $stmt->execute(['id' => $this->id]);
-
-            $stmt = $pdo->prepare('DELETE FROM events WHERE id = :id');
-            $stmt->execute(['id' => $this->id]);
-
-            $pdo->commit();
-        } catch (Throwable $e) {
-            $pdo->rollBack();
-            throw $e;
-        }
+        $stmt = $pdo->prepare('DELETE FROM qr_destinations WHERE event_id = :id');
+        $stmt->execute(['id' => $this->id]);
+        $stmt = $pdo->prepare('DELETE FROM events WHERE id = :id');
+        $stmt->execute(['id' => $this->id]);
     }
 
     // Getter: Lesezugriff auf die privaten Werte
